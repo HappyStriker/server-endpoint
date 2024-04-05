@@ -1,31 +1,60 @@
 'use strict';
 
+
 const mailer = require('../system/library/mail.js');
 const config = require('../system/config/mail.json');
 const fs = require('node:fs/promises');
+
 
 // Rate limiting settings
 const RATE_LIMIT_WINDOW_MS = 60000; // 1 minute window
 const MAX_REQUESTS_PER_WINDOW = 10; // Max 10 requests per window per IP
 
+
 // Store request counts per IP
 const requestCounts = {};
+
 
 // Cleanup old entries
 setInterval(() => {
   const threshold = Date.now() - RATE_LIMIT_WINDOW_MS;
   Object.keys(requestCounts).forEach(ip => {
-      if (requestCounts[ip].time < threshold) {
-          delete requestCounts[ip];
-      }
+    if (requestCounts[ip].time < threshold) {
+      delete requestCounts[ip];
+    }
   });
 }, RATE_LIMIT_WINDOW_MS);
+
 
 // Specify allowed origins
 const allowedOrigins = ['http://127.0.0.1:62052'];
 
-endpoints.add('/api/v1/formsubmit', async (request, response) => {
 
+const isValidMail = /[a-z0-9!#$%&'*+/=?^_`{|}~-]+(?:\.[a-z0-9!#$%&'*+/=?^_`{|}~-]+)*@(?:[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\.)+[a-z0-9](?:[a-z0-9-]*[a-z0-9])?/i;
+
+
+// <h1>Hallo Welt</h1>
+// <script>alert('XSS')</script>
+// <img src="x" onerror="alert('XSS')">
+// <a href="http://code.example.com">Click me</a>
+// <a href="javascript:alert('XSS')">Click me</a>
+// <style>@import 'http://code.example.com/code.css';</style>
+// <div style="background:url(javascript:alert('XSS'))">Test</div>
+// {{ <script>alert('XSS')</script> }} or {% <script>alert('XSS')</script> %}
+// {{ alert('XSS') }}  {% alert('XSS') %}
+// {{ <div style="background:url(javascript:alert('XSS'))">Test</div> }}
+
+function escapeHtml(text) {
+  return text
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+};
+
+
+endpoints.add('/api/v1/formsubmit', async (request, response) => {
   const ip = request.socket.remoteAddress;
   const now = Date.now();
 
@@ -63,10 +92,10 @@ endpoints.add('/api/v1/formsubmit', async (request, response) => {
   }
 
   //only allows POST requests.
-  if(request.method !== 'POST') return 403;
+  if (request.method !== 'POST') return 403;
 
   //check if the request actually contains json data;
-  if(request.headers['content-type'] !== 'application/json') return 400;
+  if (request.headers['content-type'] !== 'application/json') return 400;
 
   //checks the content length of the body in the request headers to avoid overloading the server.
   const size = parseInt(request.headers['content-length']);
@@ -74,9 +103,9 @@ endpoints.add('/api/v1/formsubmit', async (request, response) => {
 
   //collect the data from the request body
   let body = '';
-  try{
-    let data = await new Promise((resolve, reject) => {
-      let chunks = [];
+  try {
+    const data = await new Promise((resolve, reject) => {
+      const chunks = [];
       request.on('data', (chunk) => chunks.push(chunk));
       request.on('end', () => {
         resolve((Buffer.concat(chunks)));
@@ -88,49 +117,27 @@ endpoints.add('/api/v1/formsubmit', async (request, response) => {
 
     body = JSON.parse(data);
 
-    //check if the recieved data actually contains the expected data;
-    const isValidMail = /[a-z0-9!#$%&'*+/=?^_`{|}~-]+(?:\.[a-z0-9!#$%&'*+/=?^_`{|}~-]+)*@(?:[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\.)+[a-z0-9](?:[a-z0-9-]*[a-z0-9])?/i;
-    if(typeof body !== 'object') throw 'Data is not an Object.';
-    if(Object.keys(body).length !== 5) throw 'Wrong amount of keys';
-    for(let value of Object.values(body)){
-      if(value === '') throw 'Missing form data';
+    //check if the received data actually contains the expected data;
+    if (Object.prototype.toString.call(body) !== '[object Object]') throw 'Data is not an Object.';
+    if (Object.keys(body).length !== 5) throw 'Wrong amount of keys';
+    for (let value of Object.values(body)){
+      if (value === '') throw 'Missing form data';
     };
-    if(!body.email.match(isValidMail)) throw 'Not a valid mail address.';
-
-  } catch(error){
+    if (!body.email.match(isValidMail)) throw 'Not a valid mail address.';
+  } catch(error) {
     console.log(error);
-    response.end();
+    response.statusCode = 400;
+    response.end('Bad Request');
     return;
   }
 
-    //escape html or code input for security improvement;
-    //test examples that were correctly converted into plain text by the function; no execution or html inserted;
-
-    // <h1>Hallo Welt</h1>
-    // <script>alert('XSS')</script>
-    // <img src="x" onerror="alert('XSS')">
-    // <a href="http://code.example.com">Click me</a>
-    // <a href="javascript:alert('XSS')">Click me</a>
-    // <style>@import 'http://code.example.com/code.css';</style>
-    // <div style="background:url(javascript:alert('XSS'))">Test</div>
-    // {{ <script>alert('XSS')</script> }} or {% <script>alert('XSS')</script> %}
-    // {{ alert('XSS') }}  {% alert('XSS') %}
-    // {{ <div style="background:url(javascript:alert('XSS'))">Test</div> }}
-
-    function escapeHtml(text) {
-      return text
-        .replace(/&/g, "&amp;")
-        .replace(/</g, "&lt;")
-        .replace(/>/g, "&gt;")
-        .replace(/"/g, "&quot;")
-        .replace(/'/g, "&#39;");
-    };
-
-    const escapedFirstName = escapeHtml(body.firstname);
-    const escapedLastName = escapeHtml(body.lastname);
-    const escapedPhone = escapeHtml(body.phone);
-    const escapedEmail = escapeHtml(body.email);
-    const escapedMessage = escapeHtml(body.message);
+  //escape html or code input for security improvement;
+  //test examples that were correctly converted into plain text by the function; no execution or html inserted;
+  const escapedFirstName = escapeHtml(body.firstname);
+  const escapedLastName = escapeHtml(body.lastname);
+  const escapedPhone = escapeHtml(body.phone);
+  const escapedEmail = escapeHtml(body.email);
+  const escapedMessage = escapeHtml(body.message);
 
   //send the form data to the given email address
   //mailer.send(to, subject, body)
@@ -147,11 +154,11 @@ endpoints.add('/api/v1/formsubmit', async (request, response) => {
       config.mail,
       'Neue Kundenanfrage auf Katzentrainer-riedl.com',
       template
-      .replaceAll('%FIRSTNAME%', escapedFirstName)
-      .replaceAll('%LASTNAME%', escapedLastName)
-      .replaceAll('%PHONE%', escapedPhone)
-      .replaceAll('%EMAIL%', escapedEmail)
-      .replaceAll('%MESSAGE%', escapedMessage),
+        .replaceAll('%FIRSTNAME%', escapedFirstName)
+        .replaceAll('%LASTNAME%', escapedLastName)
+        .replaceAll('%PHONE%', escapedPhone)
+        .replaceAll('%EMAIL%', escapedEmail)
+        .replaceAll('%MESSAGE%', escapedMessage),
     );
   }
 
@@ -164,10 +171,10 @@ endpoints.add('/api/v1/formsubmit', async (request, response) => {
     return;
   }
 
-  //set headers for the response if no errors occured;
+  //set headers for the response if no errors occurred
+  response.statusCode = 200;
   response.setHeader('Access-Control-Allow-Origin', requestOrigin);
   response.setHeader('Content-Type', 'application/json');
-  response.statusCode = 200;
-  response.end(JSON.stringify({ message: "Success" }));
+  response.end(JSON.stringify({ message: 'Success' }));
   return;
-})
+});
