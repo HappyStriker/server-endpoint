@@ -1,25 +1,30 @@
 'use strict';
 
+
 const mailer = require('../system/library/mail.js');
 const config = require('../system/config/mail.json');
 const fs = require('node:fs/promises');
+
 
 // Rate limiting settings
 const RATE_LIMIT_WINDOW_MS = 60000; // 1 minute window
 const MAX_REQUESTS_PER_WINDOW = 10; // Max 10 requests per window per IP
 
+
 // Store request counts per IP
 const requestCounts = {};
+
 
 // Cleanup old entries
 setInterval(() => {
   const threshold = Date.now() - RATE_LIMIT_WINDOW_MS;
   Object.keys(requestCounts).forEach(ip => {
-      if (requestCounts[ip].time < threshold) {
-          delete requestCounts[ip];
-      }
+    if (requestCounts[ip].time < threshold) {
+      delete requestCounts[ip];
+    }
   });
 }, RATE_LIMIT_WINDOW_MS);
+
 
 // Specify allowed origins
 const allowedOrigins = ['http://127.0.0.1:62052'];
@@ -63,10 +68,10 @@ endpoints.add('/api/v1/formsubmit', async (request, response) => {
   }
 
   //only allows POST requests.
-  if(request.method !== 'POST') return 403;
+  if (request.method !== 'POST') return 403;
 
   //check if the request actually contains json data;
-  if(request.headers['content-type'] !== 'application/json') return 400;
+  if (request.headers['content-type'] !== 'application/json') return 400;
 
   //checks the content length of the body in the request headers to avoid overloading the server.
   const size = parseInt(request.headers['content-length']);
@@ -74,9 +79,9 @@ endpoints.add('/api/v1/formsubmit', async (request, response) => {
 
   //collect the data from the request body
   let body = '';
-  try{
-    let data = await new Promise((resolve, reject) => {
-      let chunks = [];
+  try {
+    const data = await new Promise((resolve, reject) => {
+      const chunks = [];
       request.on('data', (chunk) => chunks.push(chunk));
       request.on('end', () => {
         resolve((Buffer.concat(chunks)));
@@ -126,11 +131,13 @@ endpoints.add('/api/v1/formsubmit', async (request, response) => {
         .replace(/'/g, "&#39;");
     };
 
-    const escapedFirstName = escapeHtml(body.firstname);
-    const escapedLastName = escapeHtml(body.lastname);
-    const escapedPhone = escapeHtml(body.phone);
-    const escapedEmail = escapeHtml(body.email);
-    const escapedMessage = escapeHtml(body.message);
+  //escape html or code input for security improvement;
+  //test examples that were correctly converted into plain text by the function; no execution or html inserted;
+  const escapedFirstName = escapeHtml(body.firstname);
+  const escapedLastName = escapeHtml(body.lastname);
+  const escapedPhone = escapeHtml(body.phone);
+  const escapedEmail = escapeHtml(body.email);
+  const escapedMessage = escapeHtml(body.message);
 
   //send the form data to the given email address
   //mailer.send(to, subject, body)
@@ -147,11 +154,11 @@ endpoints.add('/api/v1/formsubmit', async (request, response) => {
       config.mail,
       'Neue Kundenanfrage auf Katzentrainer-riedl.com',
       template
-      .replaceAll('%FIRSTNAME%', escapedFirstName)
-      .replaceAll('%LASTNAME%', escapedLastName)
-      .replaceAll('%PHONE%', escapedPhone)
-      .replaceAll('%EMAIL%', escapedEmail)
-      .replaceAll('%MESSAGE%', escapedMessage),
+        .replaceAll('%FIRSTNAME%', escapedFirstName)
+        .replaceAll('%LASTNAME%', escapedLastName)
+        .replaceAll('%PHONE%', escapedPhone)
+        .replaceAll('%EMAIL%', escapedEmail)
+        .replaceAll('%MESSAGE%', escapedMessage),
     );
   }
 
@@ -164,10 +171,10 @@ endpoints.add('/api/v1/formsubmit', async (request, response) => {
     return;
   }
 
-  //set headers for the response if no errors occured;
+  //set headers for the response if no errors occurred
+  response.statusCode = 200;
   response.setHeader('Access-Control-Allow-Origin', requestOrigin);
   response.setHeader('Content-Type', 'application/json');
-  response.statusCode = 200;
-  response.end(JSON.stringify({ message: "Success" }));
+  response.end(JSON.stringify({ message: 'Success' }));
   return;
-})
+});

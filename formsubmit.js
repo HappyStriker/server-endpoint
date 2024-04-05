@@ -1,7 +1,8 @@
 'use strict';
 
-let formElement = document.getElementById("form");
-let buttonElement = document.getElementById("button");
+const formElement = document.getElementById('form');
+const buttonElement = document.getElementById('button');
+
 
 formElement.addEventListener('submit', async (event) => {
   event.preventDefault();
@@ -13,7 +14,7 @@ formElement.addEventListener('submit', async (event) => {
     formObject[key] = value;
   });
 
-  try{
+  try {
     const response = await fetch(`http://localhost:8080/api/v1/formsubmit`, {
       method: 'POST',
       headers: {
@@ -22,10 +23,10 @@ formElement.addEventListener('submit', async (event) => {
       body: JSON.stringify(formObject),
     });
 
-    if(response.status === 200){
-      console.log(response)
+    if (response.status === 200) {
+      console.log(response);
     }
-  } catch(error){
-    console.log(error)
+  } catch(error) {
+    console.log(error);
   }
 });
