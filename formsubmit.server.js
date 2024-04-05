@@ -31,6 +31,7 @@ const allowedOrigins = ['http://127.0.0.1:62052'];
 
 endpoints.add('/api/v1/formsubmit', async (request, response) => {
 
+const isValidMail = /[a-z0-9!#$%&'*+/=?^_`{|}~-]+(?:\.[a-z0-9!#$%&'*+/=?^_`{|}~-]+)*@(?:[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\.)+[a-z0-9](?:[a-z0-9-]*[a-z0-9])?/i;
   const ip = request.socket.remoteAddress;
   const now = Date.now();
 
@@ -93,8 +94,6 @@ endpoints.add('/api/v1/formsubmit', async (request, response) => {
 
     body = JSON.parse(data);
 
-    //check if the recieved data actually contains the expected data;
-    const isValidMail = /[a-z0-9!#$%&'*+/=?^_`{|}~-]+(?:\.[a-z0-9!#$%&'*+/=?^_`{|}~-]+)*@(?:[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\.)+[a-z0-9](?:[a-z0-9-]*[a-z0-9])?/i;
     if(typeof body !== 'object') throw 'Data is not an Object.';
     if(Object.keys(body).length !== 5) throw 'Wrong amount of keys';
     for(let value of Object.values(body)){
