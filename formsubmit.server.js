@@ -117,10 +117,10 @@ endpoints.add('/api/v1/formsubmit', async (request, response) => {
 
     body = JSON.parse(data);
 
-    if(typeof body !== 'object') throw 'Data is not an Object.';
     if(Object.keys(body).length !== 5) throw 'Wrong amount of keys';
     for(let value of Object.values(body)){
       if(value === '') throw 'Missing form data';
+    if (Object.prototype.toString.call(body) !== '[object Object]') throw 'Data is not an Object.';
     };
     if(!body.email.match(isValidMail)) throw 'Not a valid mail address.';
 
