@@ -32,6 +32,27 @@ const allowedOrigins = ['http://127.0.0.1:62052'];
 endpoints.add('/api/v1/formsubmit', async (request, response) => {
 
 const isValidMail = /[a-z0-9!#$%&'*+/=?^_`{|}~-]+(?:\.[a-z0-9!#$%&'*+/=?^_`{|}~-]+)*@(?:[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\.)+[a-z0-9](?:[a-z0-9-]*[a-z0-9])?/i;
+
+
+// <h1>Hallo Welt</h1>
+// <script>alert('XSS')</script>
+// <img src="x" onerror="alert('XSS')">
+// <a href="http://code.example.com">Click me</a>
+// <a href="javascript:alert('XSS')">Click me</a>
+// <style>@import 'http://code.example.com/code.css';</style>
+// <div style="background:url(javascript:alert('XSS'))">Test</div>
+// {{ <script>alert('XSS')</script> }} or {% <script>alert('XSS')</script> %}
+// {{ alert('XSS') }}  {% alert('XSS') %}
+// {{ <div style="background:url(javascript:alert('XSS'))">Test</div> }}
+
+function escapeHtml(text) {
+  return text
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+};
   const ip = request.socket.remoteAddress;
   const now = Date.now();
 
@@ -106,29 +127,6 @@ const isValidMail = /[a-z0-9!#$%&'*+/=?^_`{|}~-]+(?:\.[a-z0-9!#$%&'*+/=?^_`{|}~-
     response.end();
     return;
   }
-
-    //escape html or code input for security improvement;
-    //test examples that were correctly converted into plain text by the function; no execution or html inserted;
-
-    // <h1>Hallo Welt</h1>
-    // <script>alert('XSS')</script>
-    // <img src="x" onerror="alert('XSS')">
-    // <a href="http://code.example.com">Click me</a>
-    // <a href="javascript:alert('XSS')">Click me</a>
-    // <style>@import 'http://code.example.com/code.css';</style>
-    // <div style="background:url(javascript:alert('XSS'))">Test</div>
-    // {{ <script>alert('XSS')</script> }} or {% <script>alert('XSS')</script> %}
-    // {{ alert('XSS') }}  {% alert('XSS') %}
-    // {{ <div style="background:url(javascript:alert('XSS'))">Test</div> }}
-
-    function escapeHtml(text) {
-      return text
-        .replace(/&/g, "&amp;")
-        .replace(/</g, "&lt;")
-        .replace(/>/g, "&gt;")
-        .replace(/"/g, "&quot;")
-        .replace(/'/g, "&#39;");
-    };
 
   //escape html or code input for security improvement;
   //test examples that were correctly converted into plain text by the function; no execution or html inserted;
