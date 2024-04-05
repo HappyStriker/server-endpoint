@@ -126,7 +126,8 @@ endpoints.add('/api/v1/formsubmit', async (request, response) => {
 
   } catch(error){
     console.log(error);
-    response.end();
+    response.statusCode = 400;
+    response.end('Bad Request');
     return;
   }
 
