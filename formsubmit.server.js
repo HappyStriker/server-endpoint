@@ -29,7 +29,6 @@ setInterval(() => {
 // Specify allowed origins
 const allowedOrigins = ['http://127.0.0.1:62052'];
 
-endpoints.add('/api/v1/formsubmit', async (request, response) => {
 
 const isValidMail = /[a-z0-9!#$%&'*+/=?^_`{|}~-]+(?:\.[a-z0-9!#$%&'*+/=?^_`{|}~-]+)*@(?:[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\.)+[a-z0-9](?:[a-z0-9-]*[a-z0-9])?/i;
 
@@ -53,6 +52,9 @@ function escapeHtml(text) {
     .replace(/"/g, '&quot;')
     .replace(/'/g, '&#39;');
 };
+
+
+endpoints.add('/api/v1/formsubmit', async (request, response) => {
   const ip = request.socket.remoteAddress;
   const now = Date.now();
 
